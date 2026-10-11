@@ -51,7 +51,7 @@ def train(cfg, sampler, aux=None, out='runs', wdir='weights'):
     for t in range(1, cfg.steps + 1):
 
         eps = eps_at(cfg, t)
-        a = agent.act(s, eps, rng)
+        a = sampler.act(agent, s, eps, rng)
         s2, _, term, _, _ = env.step(a)
         r = shape(s2, cfg.w_ang, cfg.w_pos)
 

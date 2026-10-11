@@ -10,6 +10,10 @@ class Sampler:
     def probs(self):
         return {}
 
+    def act(self, agent, s, eps, rng):
+        #who plays: the learner by default, strategy 1 swaps in population members
+        return agent.act(s, eps, rng)
+
 
 
 class Fixed(Sampler):
