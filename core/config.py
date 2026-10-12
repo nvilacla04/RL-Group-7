@@ -49,6 +49,7 @@ class Cfg:
     ev_tour: int = 3            #tournament size for picking parents
     ev_sigma: float = 0.02      #mutation noise std
     ev_sync: int = 2            #gens between learner copies into the population
+    ev_frozen: bool = False     #control run: population never evolves and gets no learner copies
 
 
     def dict(self):

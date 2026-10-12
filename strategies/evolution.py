@@ -1,6 +1,7 @@
 import copy # deepcopy = full separate copy of a net, so changing the copy doesn't touch the original
 
 import numpy as np
+import pandas as pd
 import torch
 
 from core.env import shape # the shaped reward from the core (1 per step minus penalty for angle and cart position)
@@ -31,6 +32,9 @@ class ERL(Sampler):
         self.ret = 0.0 # return of the current episode so far
         self.gen = 0 # gen counter
         self.agent = None # the dqn, the trainer makes it so we only get it in act()
+        self.steps = {'pop': 0, 'dqn': 0} # env steps played by the population and by the dqn, for the share in the paper
+        self.copy_in = False # true if a dqn copy was put in the population for this gen
+        self.log = [] # one row per gen, written to gen.csv
 
 
     # trainer calls this at the start of every episode and uses the len we return
@@ -42,7 +46,11 @@ class ERL(Sampler):
 
         if not self.queue: # nothing left to play = gen is over
             if self.gen > 0: # no evolve before the 1st gen, nobody has a score yet
-                self.evolve(rng)
+                self.log_gen()
+                if self.cfg.ev_frozen: # control run: same population the whole time, only reset the scores
+                    self.fit = np.zeros(self.cfg.ev_pop)
+                else:
+                    self.evolve(rng)
             self.gen += 1
 
             # new random lens for this gen, between 0.4 and 1.8
@@ -62,6 +70,7 @@ class ERL(Sampler):
     @torch.no_grad() # no grads needed to just pick an action, saves time and memory
     def act(self, agent, s, eps, rng):
         self.agent = agent # keep it, evolve() needs it to copy the dqn into the population
+        self.steps['pop' if self.who is not None else 'dqn'] += 1
         if self.who is None:
             return agent.act(s, eps, rng) # dqn's turn, normal eps greedy like the baselines
 
@@ -100,7 +109,29 @@ class ERL(Sampler):
         # every ev_sync gens put a copy of the dqn into the population, so good dqn weights can spread there
         # only once the dqn has started learning (n_upd > 0), before that it's just a random net
         # it goes in the last spot, which is always a child, never an elite
-        if self.gen % c.ev_sync == 0 and self.agent.n_upd > 0:
+        self.copy_in = self.gen % c.ev_sync == 0 and self.agent.n_upd > 0
+        if self.copy_in:
             new[-1] = copy.deepcopy(self.agent.q).requires_grad_(False)
 
         self.pop, self.fit = new, np.zeros(c.ev_pop) # new gen starts with empty scores
+
+
+    # one row per finished gen, so we can show in the paper how the population did
+    def log_gen(self):
+        f = self.fit / self.cfg.ev_lens # avg return per episode, so it doesn't depend on ev_lens
+        self.log.append({
+            'gen': self.gen,
+            'pop_steps': self.steps['pop'], # total so far
+            'dqn_steps': self.steps['dqn'],
+            'fit_max': f.max(),
+            'fit_mean': f.mean(),
+            'fit_min': f.min(),
+            # how the dqn copy did inside the population (0 = best member), -1 if there was none this gen
+            'copy_rank': int((f > f[-1]).sum()) if self.copy_in else -1,
+            'copy_fit': f[-1] if self.copy_in else np.nan,
+        })
+
+
+    # trainer calls this whenever it writes eps.csv and val.csv
+    def dump(self, out):
+        pd.DataFrame(self.log).to_csv(out / 'gen.csv', index=False)
