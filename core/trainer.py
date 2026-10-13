@@ -42,6 +42,7 @@ def train(cfg, sampler, aux=None, out='runs', wdir='weights'):
 
     ep_log, val_log = [], []
     best, best_t, val_steps, t0 = -np.inf, 0, 0, time.time()
+    best_st, best_st_t = (-np.inf, -np.inf), 0
     loss_sum, td_sum, n_upd = 0.0, 0.0, 0
 
     l = sampler.sample(rng)
@@ -75,14 +76,15 @@ def train(cfg, sampler, aux=None, out='runs', wdir='weights'):
 
         if t % cfg.val_every == 0:
             v = validate(agent.q, cfg)
-            val_steps += int(v['steps'].sum() * cfg.val_eps)
+            val_steps += int((v['steps'].sum() + v['stress_steps'].sum()) * cfg.val_eps)
             sampler.update(v)
-            sc = float(v['score'].mean())
+            sc, st = float(v['score'].mean()), float(v['stress'].mean())
 
-            row = {'step': t, 'time': time.time() - t0, 'val_steps': val_steps, 'score': sc,
+            row = {'step': t, 'time': time.time() - t0, 'val_steps': val_steps, 'score': sc, 'stress': st,
                    'loss': loss_sum / max(n_upd, 1), 'td': td_sum / max(n_upd, 1)}
             row.update({f's_{x:.2f}': y for x, y in zip(v['lens'], v['score'])})
             row.update({f'n_{x:.2f}': y for x, y in zip(v['lens'], v['steps'])})
+            row.update({f't_{x:.2f}': y for x, y in zip(v['lens'], v['stress_steps'])})
             row.update({f'p_{x:.2f}': y for x, y in sampler.probs().items()})
             val_log.append(row)
             loss_sum, td_sum, n_upd = 0.0, 0.0, 0
@@ -92,11 +94,16 @@ def train(cfg, sampler, aux=None, out='runs', wdir='weights'):
                 best, best_t = sc, t
                 agent.save(wdir / f'{cfg.name}.pth')
 
+            #2nd ckpt picked on the stress val, ties broken by the normal val
+            if cfg.stress_cap and (st, sc) > best_st:
+                best_st, best_st_t = (st, sc), t
+                agent.save(wdir / f'{cfg.name}_stress.pth')
+
             pd.DataFrame(ep_log).to_csv(out / 'eps.csv', index=False)
             pd.DataFrame(val_log).to_csv(out / 'val.csv', index=False)
             sampler.dump(out)
-            print(f'[{cfg.name}] t={t} val={sc:.3f} best={best:.3f}@{best_t} '
-                  f'min_steps={v["steps"].min():.0f} {time.time() - t0:.0f}s', flush=True)
+            print(f'[{cfg.name}] t={t} val={sc:.3f} best={best:.3f}@{best_t} stress={st:.3f} '
+                  f'best_stress={best_st[0]:.3f}@{best_st_t} {time.time() - t0:.0f}s', flush=True)
 
 
     agent.save(out / 'final.pth')
@@ -104,4 +111,5 @@ def train(cfg, sampler, aux=None, out='runs', wdir='weights'):
     pd.DataFrame(val_log).to_csv(out / 'val.csv', index=False)
     sampler.dump(out)
 
-    return {'name': cfg.name, 'best': best, 'best_t': best_t, 'time': time.time() - t0}
+    return {'name': cfg.name, 'best': best, 'best_t': best_t,
+            'best_stress': best_st[0], 'best_stress_t': best_st_t, 'time': time.time() - t0}

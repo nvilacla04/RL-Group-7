@@ -36,9 +36,10 @@ class Cfg:
     val_every: int = 10_000
     val_eps: int = 3
     val_cap: int = 1000
+    stress_cap: int = 2000      #val with the tests force changes, 0 = off
 
     #curriculum (strategy 3)
-    cl_prio: str = 'rank'       #rank or prop
+    cl_prio: str = 'rank'       #rank, prop or anti (control, easiest bins first)
     cl_temp: float = 1.0
     cl_mix: float = 0.2         #uniform mix vs forgetting
 

@@ -26,6 +26,9 @@ class Curriculum(Sampler):
 
         if self.prio == 'rank':
             h = (1 / rankdata(-regret)) ** (1 / self.temp)
+        elif self.prio == 'anti':
+            #control: same weights but the easiest bins get them
+            h = (1 / rankdata(regret)) ** (1 / self.temp)
         else:
             h = np.maximum(regret, 1e-6) ** (1 / self.temp)
 

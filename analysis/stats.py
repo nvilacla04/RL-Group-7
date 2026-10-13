@@ -15,11 +15,11 @@ from strategies.kickstart import BANDS
 #a seed is the unit, its score is the mean test score over the 30 lens x 10 reps
 #eg python -m analysis.stats --methods fixed uniform evolution curriculum kickstart --strategies evolution curriculum kickstart
 def split_run(name):
-    #kickstart_s3 -> (kickstart, 3)
-    match = re.match(r"(.+)_s(\d+)$", name)
+    #kickstart_s3 -> (kickstart, 3), stress ckpts kickstart_s3_stress -> (kickstart_stress, 3)
+    match = re.match(r"(.+)_s(\d+)(_stress)?$", name)
     if match is None:
         raise ValueError(f"Run name {name} doesnt end in _s<seed>!")
-    method_and_seed = (match.group(1), int(match.group(2)))
+    method_and_seed = (match.group(1) + (match.group(3) or ""), int(match.group(2)))
     #method and seed as a pair
     return method_and_seed
 
