@@ -8,12 +8,14 @@ from core.config import Cfg
 from core.samplers import Fixed, Uniform
 from core.trainer import train
 from strategies.curriculum import Curriculum
+from strategies.evolution import ERL
 
 #method -> len sampler
 METHODS = {
     'fixed': lambda c: Fixed(0.5),
     'uniform': lambda c: Uniform(c.lo, c.hi),
     'curriculum': lambda c: Curriculum(c.val_lens, c.lo, c.hi, c.cl_prio, c.cl_temp, c.cl_mix),
+    'evolution': lambda c: ERL(c),
 }
 
 

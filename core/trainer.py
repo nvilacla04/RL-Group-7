@@ -51,7 +51,7 @@ def train(cfg, sampler, aux=None, out='runs', wdir='weights'):
     for t in range(1, cfg.steps + 1):
 
         eps = eps_at(cfg, t)
-        a = agent.act(s, eps, rng)
+        a = sampler.act(agent, s, eps, rng)
         s2, _, term, _, _ = env.step(a)
         r = shape(s2, cfg.w_ang, cfg.w_pos)
 
@@ -94,6 +94,7 @@ def train(cfg, sampler, aux=None, out='runs', wdir='weights'):
 
             pd.DataFrame(ep_log).to_csv(out / 'eps.csv', index=False)
             pd.DataFrame(val_log).to_csv(out / 'val.csv', index=False)
+            sampler.dump(out)
             print(f'[{cfg.name}] t={t} val={sc:.3f} best={best:.3f}@{best_t} '
                   f'min_steps={v["steps"].min():.0f} {time.time() - t0:.0f}s', flush=True)
 
@@ -101,5 +102,6 @@ def train(cfg, sampler, aux=None, out='runs', wdir='weights'):
     agent.save(out / 'final.pth')
     pd.DataFrame(ep_log).to_csv(out / 'eps.csv', index=False)
     pd.DataFrame(val_log).to_csv(out / 'val.csv', index=False)
+    sampler.dump(out)
 
     return {'name': cfg.name, 'best': best, 'best_t': best_t, 'time': time.time() - t0}
