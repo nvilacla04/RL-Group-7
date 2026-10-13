@@ -11,9 +11,8 @@ import pandas as pd
 from analysis.stats import best_val_runs, load_test, split_run
 from strategies.kickstart import BANDS
 
-
 #figures for the report from test_results.csv (evaluate.py) and runs/ (training logs)
-#eg python -m analysis.plots --methods fixed uniform curriculum evolution kickstart
+#eg python -m analysis.plots --methods fixed uniform evolution curriculum kickstart
 
 #categorical colours in a fixed order (colourblind checked), a method keeps its colour in every figure
 SERIES_COLOURS = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#4a3aa7", "#e34948"]
@@ -25,7 +24,6 @@ MUTED = "#898781"
 GRID = "#e1e0d9"
 SURFACE = "#fcfcfb"
 
-
 def set_style():
     #thin marks, quiet grid and axes, text in ink not series colours
     plt.rcParams.update({"figure.facecolor": SURFACE, "axes.facecolor": SURFACE, "savefig.facecolor": SURFACE,
@@ -34,33 +32,35 @@ def set_style():
                          "axes.spines.top": False, "axes.spines.right": False, "lines.linewidth": 1.5,
                          "font.size": 8, "axes.titlesize": 8, "legend.frameon": False, "legend.fontsize": 7})
 
-
 def colour_of(method, methods):
-    #known methods always have the same slot, others take the free slots in the order given
+    #known methods always have the same slot
     if method in METHOD_ORDER:
         colour = SERIES_COLOURS[METHOD_ORDER.index(method)]
+        #same colour in every figure
         return colour
-    #free = slots after the known methods, then slots of known methods that arent in this figure
+    #others take the free slots: after the known methods, then slots of known methods that arent in this figure
     free_slots = list(range(len(METHOD_ORDER), len(SERIES_COLOURS)))
     for slot, known_method in enumerate(METHOD_ORDER):
+        #known method that isnt in this figure
         if known_method not in methods:
             free_slots.append(slot)
     extra_methods = []
     for other in methods:
+        #method without a fixed slot
         if other not in METHOD_ORDER:
             extra_methods.append(other)
     #no cycling, a reused colour would look like another method
     if extra_methods.index(method) >= len(free_slots):
         raise ValueError(f"Out of colours for {method}, plot fewer methods at once!")
     colour = SERIES_COLOURS[free_slots[extra_methods.index(method)]]
+    #hex colour of this method
     return colour
 
-
 def save(fig, out, name):
+    #pdf for the report, png to look at
     for ext in ("pdf", "png"):
         fig.savefig(Path(out) / f"{name}.{ext}", dpi=200, bbox_inches="tight")
     plt.close(fig)
-
 
 def plot_final_bars(episodes, picks, methods, out):
     #the required plot: avg +- std over the 10 reps per len for the submitted net of each method, overall avg in the title
@@ -68,16 +68,19 @@ def plot_final_bars(episodes, picks, methods, out):
     for ax, method in zip(axes[:, 0], methods):
         run = episodes[(episodes["method"] == method) & (episodes["seed"] == picks.loc[method, "seed"])]
         per_length = run.groupby("length")["score"].agg(["mean", "std"])
-        x = np.arange(len(per_length))
-        ax.bar(x, per_length["mean"], 0.7, yerr=per_length["std"], color=colour_of(method, methods), edgecolor=SURFACE, linewidth=0.8, error_kw={"elinewidth": 0.7, "capsize": 1.5, "ecolor": INK})
+        bar_positions = np.arange(len(per_length))
+        ax.bar(bar_positions, per_length["mean"], 0.7, yerr=per_length["std"], color=colour_of(method, methods), edgecolor=SURFACE, linewidth=0.8, error_kw={"elinewidth": 0.7, "capsize": 1.5, "ecolor": INK})
         ax.set_title(f"{method} (seed {picks.loc[method, 'seed']}): average score over all pole lengths = {per_length['mean'].mean():.0f}", loc="left")
         ax.set_ylabel("episode length")
         ax.grid(axis="x", visible=False)
-    axes[-1, 0].set_xticks(x, [f"{length:.2f}" for length in per_length.index], rotation=45)
+    #len labels only on the bottom plot since x is shared
+    length_labels = []
+    for length in per_length.index:
+        length_labels.append(f"{length:.2f}")
+    axes[-1, 0].set_xticks(bar_positions, length_labels, rotation=45)
     axes[-1, 0].set_xlabel("pole length")
     fig.tight_layout()
     save(fig, out, "test_bars_final_nets")
-
 
 def plot_per_length(episodes, methods, out):
     #mean over seeds of the per len score, band = +- std over seeds
@@ -98,13 +101,13 @@ def plot_per_length(episodes, methods, out):
     fig.tight_layout()
     save(fig, out, "test_per_length")
 
-
 def plot_phases(episodes, methods, out):
     #share of test episodes that ended in each phase, pooled over seeds and lens
     fig, ax = plt.subplots(figsize=(6.5, 0.45 * len(methods) + 0.9))
     shares = episodes.groupby("method")["phase"].value_counts(normalize=True).unstack(fill_value=0).reindex(methods)
     left = np.zeros(len(methods))
     phase_names = {1: "fell in phase 1 (normal)", 2: "fell in phase 2 (wind)", 3: "reached phase 3 (growing force)"}
+    #stacked left to right, each phase starts where the last one ended
     for phase in (1, 2, 3):
         share = shares.get(phase, pd.Series(0.0, index=methods)).to_numpy()
         ax.barh(methods, share, left=left, height=0.55, color=ORDINAL_BLUES[phase - 1], edgecolor=SURFACE, linewidth=1.5, label=phase_names[phase])
@@ -117,32 +120,37 @@ def plot_phases(episodes, methods, out):
     fig.tight_layout()
     save(fig, out, "test_phases")
 
-
 def kickstart_curves(run_dir):
     #l_td per val round = trainer loss - mean lam * l_ks over the same updates, plus agreement per band
     cfg = json.loads((run_dir / "cfg.json").read_text())
     val = pd.read_csv(run_dir / "val.csv").set_index("step")
-    ks = pd.read_csv(run_dir / "ks.csv")
-    ks["val_round"] = (np.ceil(ks["step"] / cfg["val_every"]) * cfg["val_every"]).astype(int)
-    for key in ["ks", "lam_ks"] + [f"agree_{band}" for band in BANDS]:
-        ks[f"{key}_sum"] = ks[key] * ks["n_upd"]
-    sums = ks.groupby("val_round").sum(numeric_only=True)
+    ks_log = pd.read_csv(run_dir / "ks.csv")
+    ks_log["val_round"] = (np.ceil(ks_log["step"] / cfg["val_every"]) * cfg["val_every"]).astype(int)
+    #window means back to sums so windows can be merged weighted by their updates
+    summed_keys = ["ks", "lam_ks"]
+    for band in BANDS:
+        summed_keys.append(f"agree_{band}")
+    for key in summed_keys:
+        ks_log[f"{key}_sum"] = ks_log[key] * ks_log["n_upd"]
+    sums = ks_log.groupby("val_round").sum(numeric_only=True)
     curves = pd.DataFrame(index=sums.index)
     curves["l_ks"] = sums["ks_sum"] / sums["n_upd"]
     curves["lam_l_ks"] = sums["lam_ks_sum"] / sums["n_upd"]
     curves["l_td"] = val["loss"].reindex(curves.index) - curves["lam_l_ks"]
     for band in BANDS:
         curves[f"agree_{band}"] = sums[f"agree_{band}_sum"] / sums["n_upd"]
+    #cfg is returned too for the lam = 0 line
     return curves, cfg
-
 
 def plot_kickstart(method, runs_dir, out):
     #training curves of the kickstarted students, mean over seeds
     all_curves = []
     for run_dir in sorted(Path(runs_dir).glob(f"{method}_s*")):
+        #only runs of exactly this method that have a ks log
         if split_run(run_dir.name)[0] == method and (run_dir / "ks.csv").exists():
             curves, cfg = kickstart_curves(run_dir)
             all_curves.append(curves)
+    #no kickstart logs so nothing to plot
     if not all_curves:
         return
     mean_curves = pd.concat(all_curves).groupby(level=0).mean()
@@ -165,22 +173,29 @@ def plot_kickstart(method, runs_dir, out):
     fig.tight_layout()
     save(fig, out, f"train_{method}")
 
-
 if __name__ == "__main__":
-    p = argparse.ArgumentParser()
-    p.add_argument("--methods", nargs="+", required=True, help="run names without _s<seed>, plotted in this order")
-    p.add_argument("--root", default=".", help="dir with runs/")
-    p.add_argument("--test", nargs="+", default=["test_results.csv"], help="csvs from evaluate.py")
-    p.add_argument("--out", default="results/figures")
-    a = p.parse_args()
-    Path(a.out).mkdir(parents=True, exist_ok=True)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--methods", nargs="+", required=True, help="run names without _s<seed>, plotted in this order")
+    parser.add_argument("--root", default=".", help="dir with runs/")
+    parser.add_argument("--test", nargs="+", default=["test_results.csv"], help="csvs from evaluate.py")
+    parser.add_argument("--out", default="results/figures")
+    args = parser.parse_args()
+    Path(args.out).mkdir(parents=True, exist_ok=True)
     set_style()
-    episodes = load_test(a.methods, a.test)
-    picks = best_val_runs(a.methods, f"{a.root}/runs")
-    plot_final_bars(episodes, picks, a.methods, a.out)
-    plot_per_length(episodes, a.methods, a.out)
-    plot_phases(episodes, a.methods, a.out)
-    for method in a.methods:
-        if method.startswith("kickstart"):
-            plot_kickstart(method, f"{a.root}/runs", a.out)
-    print(f"figures saved in {a.out}")
+    try:
+        episodes = load_test(args.methods, args.test)
+        picks = best_val_runs(args.methods, f"{args.root}/runs")
+        plot_final_bars(episodes, picks, args.methods, args.out)
+        plot_per_length(episodes, args.methods, args.out)
+        plot_phases(episodes, args.methods, args.out)
+        for method in args.methods:
+            #training curves only exist for kickstart runs
+            if method.startswith("kickstart"):
+                plot_kickstart(method, f"{args.root}/runs", args.out)
+        print(f"figures saved in {args.out}")
+    except FileNotFoundError as missing_file:
+        print(f"Missing file: {missing_file}")
+    except KeyError as missing_method:
+        print(f"No finished runs for method {missing_method}!")
+    except ValueError as bad_results:
+        print(bad_results)
