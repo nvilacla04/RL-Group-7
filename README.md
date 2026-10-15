@@ -86,6 +86,10 @@ python -m analysis.stats --methods fixed uniform evolution evolution_frozen curr
 ```
 python -m analysis.plots --methods fixed uniform evolution evolution_frozen curriculum curriculum_anti kickstart kickstart_eqbudget
 ```
+The remaining figures in the paper (the submitted networks per method, strategy 1's population, every seed's test score and the validation curves) come from:
+```
+python -m analysis.paper_figures
+```
 
 ## Trained networks
 - `weights/final/<method>.pth` are the networks we submit, one per method. For each method this is the seed with the best validation score, so the choice doesn't depend on the test.
