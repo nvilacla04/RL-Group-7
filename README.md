@@ -86,7 +86,7 @@ python -m analysis.stats --methods fixed uniform evolution evolution_frozen curr
 ```
 python -m analysis.plots --methods fixed uniform evolution evolution_frozen curriculum curriculum_anti kickstart kickstart_eqbudget
 ```
-The remaining figures in the paper (the submitted networks per method, strategy 1's population, every seed's test score and the validation curves) come from:
+The remaining figures in the paper (the submitted networks per method, strategy 1's population, strategy 3's sampling, every seed's test score and the validation curves) come from:
 ```
 python -m analysis.paper_figures
 ```

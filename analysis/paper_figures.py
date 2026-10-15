@@ -24,7 +24,7 @@ def plot_bars_submitted(episodes, picks, out):
     #required plot for the submitted net of each method: avg +- std over the 10 reps per len, overall avg in the title
     #made at one column width so the text stays readable in the paper
     with plt.rc_context({"font.size": 5.5, "axes.titlesize": 5.5}):
-        fig, axes = plt.subplots(4, 2, figsize=(3.4, 4.4), sharex=True, sharey=True)
+        fig, axes = plt.subplots(4, 2, figsize=(3.4, 3.7), sharex=True, sharey=True)
 
         for ax, method in zip(axes.T.ravel(), [m for pair in PAIRS for m in pair]):
             run = episodes[(episodes["method"] == method) & (episodes["seed"] == picks.loc[method, "seed"])]
@@ -103,6 +103,25 @@ def plot_s1(runs_dir, out):
     save(fig, out, "s1_evolution")
 
 
+def plot_s3(runs_dir, out):
+    #sampling prob of each len bin during training, mean over seeds, curriculum next to the anti control
+    fig, axes = plt.subplots(1, 2, figsize=(7, 1.9), sharey=True)
+
+    for ax, method in zip(axes, ("curriculum", "curriculum_anti")):
+        vals = pd.concat([pd.read_csv(Path(runs_dir) / f"{method}_s{seed}" / "val.csv") for seed in SEEDS])
+        cols = [c for c in vals.columns if c.startswith("p_")]
+        probs = vals.groupby("step")[cols].mean()
+        lens = [float(c[2:]) for c in cols]
+        image = ax.pcolormesh(probs.index / 1000, lens, probs.T.values, shading="nearest", cmap="Blues", vmin=0, vmax=0.3)
+        ax.set_title(LABELS[method], loc="left")
+        ax.set_xlabel("env steps (k)")
+        ax.grid(False)
+
+    axes[0].set_ylabel("pole length (bin centre)")
+    fig.colorbar(image, ax=axes, label="sampling prob", pad=0.02)
+    save(fig, out, "s3_curriculum")
+
+
 def plot_seed_scores(episodes, out):
     #test score of every seed as a dot, bar = mean over seeds, strategy next to its control
     scores = seed_scores(episodes)
@@ -156,6 +175,7 @@ if __name__ == "__main__":
     picks = best_val_runs(METHODS, f"{args.root}/runs")
     plot_bars_submitted(episodes, picks, args.out)
     plot_s1(f"{args.root}/runs", args.out)
+    plot_s3(f"{args.root}/runs", args.out)
     plot_seed_scores(episodes, args.out)
     plot_val_curves(f"{args.root}/runs", args.out)
     print(f"figures saved in {args.out}")
