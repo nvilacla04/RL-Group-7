@@ -37,7 +37,7 @@ To keep the comparison fair, every method uses the same setup. Only the part a s
 - There is no 500-step cutoff. Training episodes stop at 1000 steps, but that is not stored as a terminal state.
 - The only thing we change in the environment is `env.unwrapped.length`, the same way the test script does it.
 - Each run is 400k env steps, and every method is run with seeds 0 to 9.
-- Every 10k steps the network is validated on our own 10 pole lengths (0.47 to 1.73, which sit between the test lengths). We keep the checkpoint with the best validation score. Every round also runs a stress validation on the same lengths with the same force changes as the test script (capped at 2000 steps), and the best checkpoint on that is kept as well. The test script is never used for training or for choosing checkpoints.
+- Every 10k steps the network is validated on our own 10 pole lengths (0.47 to 1.73, which sit between the test lengths). We keep the checkpoint with the best validation score. The test script is never used for training or for choosing checkpoints.
 
 All hyperparameters are in `core/config.py` (strategy 2 adds its own in `KSCfg` in `strategies/kickstart.py`). Any of them can be changed from the command line with `--set name=value`, and every run saves its full config to `runs/<run>/cfg.json`.
 
@@ -90,12 +90,11 @@ python -m analysis.plots --methods fixed uniform evolution evolution_frozen curr
 ## Trained networks
 - `weights/final/<method>.pth` are the networks we submit, one per method. For each method this is the seed with the best validation score, so the choice doesn't depend on the test.
 - `weights/<run>.pth` is the best checkpoint of every single run, for example `weights/kickstart_s3.pth`.
-- `weights/<run>_stress.pth` is the best checkpoint of the same run on the stress validation. In the stats these show up as `<method>_stress`, so for example `--methods uniform uniform_stress` compares the two picks.
 
 To run the original test script on one of them, set `trained_nn = 'final/kickstart.pth'` (or another method) in `test_script.py`. It loads networks from `weights/`.
 
 ## Notes
 - The pilot runs in `pilot/` use seeds 100 and up so they don't overlap with the final runs, and only their validation scores were used.
 - In gym 0.26, setting `length` does not update `polemass_length`. We left it like that so training matches the test script.
-- All training runs and tests were done on one laptop (Intel Core i7-11800H, 8 cores / 16 threads, 32 GB RAM, Windows 11, torch on CPU with 1 thread per run). Every method was trained one command at a time with `--procs 5` and nothing else running, so the wall clock times in `results/cost.csv` can be compared. One 400k-step run took about 6 minutes this way.
+- All training runs and tests were done on one laptop (Intel Core i7-11800H, 8 cores / 16 threads, 32 GB RAM, Windows 11, torch on CPU with 1 thread per run). Every method was trained one command at a time with `--procs 5` and nothing else running, so the wall clock times in `results/cost.csv` can be compared. One 400k-step run took about 4.5 minutes this way.
 

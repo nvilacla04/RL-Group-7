@@ -1,9 +1,0 @@
-method,seed,run,best_val,best_step
-curriculum,7,curriculum_s7,0.984395101277944,300000
-curriculum_anti,3,curriculum_anti_s3,0.9790495302941512,400000
-evolution,4,evolution_s4,0.986552172801221,270000
-evolution_frozen,7,evolution_frozen_s7,0.9856122424712094,60000
-fixed,0,fixed_s0,0.9879841976639844,170000
-kickstart,3,kickstart_s3,0.9938057368827636,30000
-kickstart_eqbudget,4,kickstart_eqbudget_s4,0.991030560809867,30000
-uniform,0,uniform_s0,0.99132469308517,150000

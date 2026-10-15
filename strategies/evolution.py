@@ -25,7 +25,11 @@ class ERL(Sampler):
 
     def __init__(self, cfg):
         self.cfg = cfg # all settings, the ev_* ones are in core/config.py
-        self.pop = [QNetwork(4, 2).requires_grad_(False) for _ in range(cfg.ev_pop)] # random nets to start, no grads since they only change by mutation
+        # this runs before the trainer seeds torch, so the starting population gets its own seed from the run's seed
+        # fork_rng puts the global torch rng back afterwards, +10000 so no member starts equal to the dqn
+        with torch.random.fork_rng():
+            torch.manual_seed(cfg.seed + 10_000)
+            self.pop = [QNetwork(4, 2).requires_grad_(False) for _ in range(cfg.ev_pop)] # random nets to start, no grads since they only change by mutation
         self.fit = np.zeros(cfg.ev_pop) # fitness = score of each member this gen (sum of its returns)
         self.queue = [] # list of (who, len) still to play this gen
         self.who = None # current player: a member index, or None = the dqn

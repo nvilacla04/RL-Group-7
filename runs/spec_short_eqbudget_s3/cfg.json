@@ -28,7 +28,6 @@
  "val_every": 10000,
  "val_eps": 3,
  "val_cap": 1000,
- "stress_cap": 2000,
  "cl_prio": "rank",
  "cl_temp": 1.0,
  "cl_mix": 0.2,
