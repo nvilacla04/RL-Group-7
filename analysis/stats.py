@@ -169,6 +169,7 @@ if __name__ == "__main__":
     parser.add_argument("--methods", nargs="+", required=True, help="run names without _s<seed>")
     parser.add_argument("--baseline", default="uniform", help="every method is tested against this one")
     parser.add_argument("--strategies", nargs="*", default=[], help="these are also tested pairwise")
+    parser.add_argument("--controls", nargs="*", default=[], help="strategy:control pairs, eg evolution:evolution_frozen")
     parser.add_argument("--root", default=".", help="dir with runs/ and weights/")
     parser.add_argument("--test", nargs="+", default=["test_results.csv"], help="csvs from evaluate.py")
     parser.add_argument("--out", default="results")
@@ -181,7 +182,7 @@ if __name__ == "__main__":
         episodes = load_test(args.methods, args.test)
         scores = seed_scores(episodes)
         tables = {"summary": summary(episodes), "cost": training_cost(args.methods, f"{args.root}/runs"), "final_picks": best_val_runs(args.methods, f"{args.root}/runs")}
-        #2 families so the holm correction isnt spread over every possible pair
+        #separate families so the holm correction isnt spread over every possible pair
         vs_baseline = []
         for method in args.methods:
             #baseline isnt tested against itself
@@ -193,6 +194,9 @@ if __name__ == "__main__":
         #strategies against each other
         if len(args.strategies) > 1:
             tables["tests_strategies"] = compare(scores, list(combinations(args.strategies, 2)))
+        #each strategy against its own control, 3rd family
+        if args.controls:
+            tables["tests_controls"] = compare(scores, [tuple(pair.split(":")) for pair in args.controls])
         for name, table in tables.items():
             table.to_csv(out / f"{name}.csv")
             print(f"\n== {name}\n{table.round(4)}")
