@@ -78,9 +78,9 @@ These steps only use the final saved networks.
 ```
 python evaluate.py weights/fixed_s*.pth weights/uniform_s*.pth weights/evolution_s*.pth weights/evolution_frozen_s*.pth weights/curriculum_s*.pth weights/curriculum_anti_s*.pth weights/kickstart_s*.pth weights/kickstart_eqbudget_s*.pth --procs 14
 ```
-2. Statistics: mean and std over the 10 seeds, Welch t-tests and Mann-Whitney U tests against the uniform baseline and between the strategies (Holm corrected), the phase of the test where the networks fail, and training cost. The tables go in `results/`. `--copy-final` copies each method's final network to `weights/final/`.
+2. Statistics: mean and std over the 10 seeds, Welch t-tests and Mann-Whitney U tests against the uniform baseline, between the strategies and of each strategy against its control (Holm corrected within each of these three groups), the phase of the test where the networks fail, and training cost. The tables go in `results/`. `--copy-final` copies each method's final network to `weights/final/`.
 ```
-python -m analysis.stats --methods fixed uniform evolution evolution_frozen curriculum curriculum_anti kickstart kickstart_eqbudget --strategies evolution curriculum kickstart --copy-final
+python -m analysis.stats --methods fixed uniform evolution evolution_frozen curriculum curriculum_anti kickstart kickstart_eqbudget --strategies evolution curriculum kickstart --controls evolution:evolution_frozen curriculum:curriculum_anti kickstart:kickstart_eqbudget --copy-final
 ```
 3. Figures for the report go in `results/figures/`: the bar plot per method (average and std per pole length, with the overall average in the title), score per pole length, phase of failure, and the training curves for strategy 2.
 ```
