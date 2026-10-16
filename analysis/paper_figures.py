@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from analysis.plots import INK, MUTED, SURFACE, colour_of, save, set_style
+from analysis.plots import INK, MUTED, colour_of, save, set_style
 from analysis.stats import best_val_runs, load_test, seed_scores
 
 #the figures in the paper that analysis.plots doesnt make, same style and colours
