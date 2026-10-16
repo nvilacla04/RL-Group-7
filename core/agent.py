@@ -38,11 +38,13 @@ class DQNAgent:
         else:
             q2 = q2.max(1).values
 
+        #d is 1 only when the pole really falls so the 1000 step cap still bootstraps
         return b['r'] + self.cfg.gamma * (1 - b['d']) * q2
 
 
     def update(self, b, aux=None, t=0):
         q_all = self.q(b['s'])
+        #only the q val of the action that was taken in each sample
         q = q_all.gather(1, b['a'].unsqueeze(1)).squeeze(1)
         y = self.target(b)
 

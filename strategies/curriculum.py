@@ -25,6 +25,7 @@ class Curriculum(Sampler):
         regret = 1 - v['score']
 
         if self.prio == 'rank':
+            #minus so the worst bin gets rank 1 and the biggest weight
             h = (1 / rankdata(-regret)) ** (1 / self.temp)
         elif self.prio == 'anti':
             #control: same weights but the easiest bins get them
